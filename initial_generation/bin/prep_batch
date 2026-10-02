@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+
+import json
+import argparse
+from pathlib import Path
+
+parser = argparse.ArgumentParser(description="Prepare batch requests for the Anthropic API.")
+parser.add_argument("header", help="Path to the header file")
+parser.add_argument("prompt", help="Path to the prompt file")
+parser.add_argument("-o", "--output", default="prepped_requests.jsonl", help="Output file path (default: prepped_requests.jsonl)")
+parser.add_argument("-n", "--num_requests", type=int, default=1, help="Number of requests to generate (default: 1)")
+parser.add_argument("-t", "--num_tokens", type=int, default=3000, help="Max tokens per request (default: 3000)")
+parser.add_argument("-T", "--temperature", type=float, default=None, help="Temperature for generation (default: None)")
+parser.add_argument("-m", "--model", default="claude-sonnet-4-6", help="Model to use (default: claude-sonnet-4-6)")
+parser.add_argument("-e", "--include-execution", action="store_true", help="Flag on whether or not to include execution")
+parser.add_argument("-r", "--random-seed", action="store_true", help="Flag on whether or not to use a random seed for each request")
+
+args = parser.parse_args()
+
+header_file = Path(args.header).resolve()
+prompt_file = Path(args.prompt).resolve()
+output_file = Path(args.output).resolve()
+num_requests = args.num_requests
+num_tokens = args.num_tokens
+temperature = args.temperature
+model = args.model
+
+if num_requests < 1:
+    parser.error("--num_requests must be at least 1")
+if num_tokens < 1:
+    parser.error("--num_tokens must be at least 1")
+
+current_length = 0
+if output_file.exists():
+    with output_file.open("r", encoding="utf-8") as existing_file:
+        current_length = sum(1 for line in existing_file if line.strip())
+output_file.parent.mkdir(parents=True, exist_ok=True)
+
+tools = []
+if args.include_execution:
+    tools.append({"type": "code_execution_20250825", "name": "code_execution"})
+
+with header_file.open("r", encoding="utf-8") as header_stream:
+    header = header_stream.read()
+with prompt_file.open("r", encoding="utf-8") as prompt_stream:
+    prompt = header + "\n" + prompt_stream.read()
+
+with output_file.open("a", encoding="utf-8") as output_stream:
+    for i in range(num_requests):
+        content = prompt
+        if args.random_seed:
+            content = f"Generate a random string, and manipulate it to generate one diverse response. {prompt}"
+
+        body = {
+            "model": model,
+            "messages": [{"role": "user", "content": content}],
+            "tools": tools,
+            "max_tokens": num_tokens,
+        }
+
+        if temperature is not None:
+            body["temperature"] = temperature
+
+        request_data = {
+            "custom_id": f"id_{i + current_length}",
+            "body": body,
+        }
+        output_stream.write(json.dumps(request_data) + "\n")
+
+print(f"Prepared {num_requests} request(s) in {output_file}")

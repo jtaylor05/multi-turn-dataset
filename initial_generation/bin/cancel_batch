@@ -1,0 +1,16 @@
+#!/usr/bin/env python
+
+import anthropic
+import sys
+
+if len(sys.argv) != 2:
+    print("Usage: python cancel_batch.py <batch_id>")
+    sys.exit(1)
+
+client = anthropic.Anthropic()
+
+message_batch = client.messages.batches.cancel(
+    sys.argv[1],
+)
+
+print(message_batch)

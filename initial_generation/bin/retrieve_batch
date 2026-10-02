@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+
+import anthropic
+import json
+import os
+import sys
+from pathlib import Path
+
+if len(sys.argv) != 2:
+    print("Usage: python retrieve_batch <batch_id>")
+    sys.exit(1)
+
+client = anthropic.Anthropic()
+batch_id = sys.argv[1]
+data_dir = Path(os.environ.get("DATA_DIR", Path(__file__).resolve().parent.parent / "data"))
+output_dir = data_dir / "output"
+error_dir = data_dir / "error"
+output_dir.mkdir(parents=True, exist_ok=True)
+error_dir.mkdir(parents=True, exist_ok=True)
+
+with (output_dir / f"{batch_id}.jsonl").open("w", encoding="utf-8") as output_file, (error_dir / f"{batch_id}.jsonl").open("w", encoding="utf-8") as error_file:
+    for result in client.messages.batches.results(
+        batch_id,
+    ):
+        match result.result.type:
+            case "succeeded":
+                output_file.write(json.dumps(result.model_dump(), default=str) + "\n")
+            case "errored":
+                error_file.write(json.dumps(result.model_dump(), default=str) + "\n")
+            case "expired":   
+                error_file.write(json.dumps(result.model_dump(), default=str) + "\n")

@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -gt 1 ]]; then
+    echo "Usage: $0 [host-data-directory]" >&2
+    exit 2
+fi
+
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd -- "$script_dir/.." && pwd)"
+data_dir="${1:-$repo_root/initial_generation/data}"
+mkdir -p "$data_dir"
+data_dir="$(cd -- "$data_dir" && pwd)"
+image="multi-turn-initial-generation:local"
+env_file="$repo_root/initial_generation/.env"
+
+docker build -f "$repo_root/initial_generation/Dockerfile" -t "$image" "$repo_root"
+
+docker_args=(run --rm -it --user "$(id -u):$(id -g)" --volume "$data_dir:/app/data")
+if [[ -f "$env_file" ]]; then
+    docker_args+=(--env-file "$env_file")
+fi
+
+exec docker "${docker_args[@]}" "$image"

@@ -1,8 +1,9 @@
 # Helper Scripts
 
-These scripts are convenience wrappers around Docker and analysis commands. The supported container launchers are `start-experimentation` and `start-evaluation`; both build from the checked-in `generation/` or `evaluation/` directories and mount a host data directory at `/app/data`.
+These scripts are convenience wrappers around Docker and analysis commands. The supported container launchers are `start-initial-generation`, `start-experimentation`, and `start-evaluation`; each mounts a host data directory at `/app/data`.
 
 ```sh
+bash/start-initial-generation [host-data-directory]
 bash/start-experimentation [host-data-directory]
 bash/start-evaluation [host-data-directory]
 ```

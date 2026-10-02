@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PROMPTS_DIR="${PROMPTS_DIR:-$SCRIPT_DIR/../../prompts}"
+DATA_DIR="${DATA_DIR:-$SCRIPT_DIR/../data}"
+OUTPUT_DIR="$DATA_DIR/prepped_files"
+mkdir -p "$OUTPUT_DIR"
+
+HEADER_FILE="$PROMPTS_DIR/PROMPT_HEADER_VARIANT.md"
+NUM_REQUESTS=10
+EXTRA_ARGS=()
+
+usage() {
+    echo "Usage: $0 [-n num_requests] [-t num_tokens] [-T temperature] [-m model]"
+    exit 1
+}
+
+while getopts "n:t:T:m:" opt; do
+    case $opt in
+        n) NUM_REQUESTS=$OPTARG ;;
+        t) NUM_TOKENS=$OPTARG ;;
+        T) TEMPERATURE=$OPTARG ;;
+        m) MODEL=$OPTARG ;;
+        *) usage ;;
+    esac
+done
+
+[[ -n "${NUM_TOKENS:-}" ]] && EXTRA_ARGS+=(--num_tokens "$NUM_TOKENS")
+[[ -n "${TEMPERATURE:-}" ]] && EXTRA_ARGS+=(--temperature "$TEMPERATURE")
+[[ -n "${MODEL:-}" ]] && EXTRA_ARGS+=(--model "$MODEL")
+
+run_prep() {
+    python3 "$SCRIPT_DIR/prep_batch" "$HEADER_FILE" "$PROMPTS_DIR/$1" \
+        --output "$OUTPUT_DIR/$2" --num_requests "$NUM_REQUESTS" "${EXTRA_ARGS[@]}"
+}
+
+# code-state-awareness
+run_prep "code-state-awareness/code-comprehension-analysis/PROMPT.md" \
+    "code-state-awareness_code-comprehension-analysis.jsonl"
+
+run_prep "code-state-awareness/code-context-memory/PROMPT.md" \
+    "code-state-awareness_code-context-memory.jsonl"
+
+run_prep "code-state-awareness/code-interference-management/PROMPT.md" \
+    "code-state-awareness_code-interference-management.jsonl"
+
+run_prep "code-state-awareness/code-reference-resolution/PROMPT.md" \
+    "code-state-awareness_code-reference-resolution.jsonl"
+
+# interaction-analysis
+run_prep "interaction-analysis/correctness-defence/PROMPT.md" \
+    "interaction-analysis_correctness-defence.jsonl"
+
+run_prep "interaction-analysis/multi-turn-program-reasoning/PROMPT.md" \
+    "interaction-analysis_multi-turn-program-reasoning.jsonl"
+
+run_prep "interaction-analysis/proactive-engineering-guidance/PROMPT.md" \
+    "interaction-analysis_proactive-engineering-guidance.jsonl"
+
+# iterative-code-evolution
+run_prep "iterative-code-evolution/debugging-reflection-correction/PROMPT.md" \
+    "iterative-code-evolution_debugging-reflection-correction.jsonl"
+
+run_prep "iterative-code-evolution/incremental-specification-refinement/PROMPT.md" \
+    "iterative-code-evolution_incremental-specification-refinement.jsonl"
+
+run_prep "iterative-code-evolution/semantic-rewriting/PROMPT.md" \
+    "iterative-code-evolution_semantic-rewriting.jsonl"
+
+run_prep "iterative-code-evolution/structural-code-reformatting/PROMPT.md" \
+    "iterative-code-evolution_structural-code-reformatting.jsonl"
+
+echo "Done! Request files are in $OUTPUT_DIR"

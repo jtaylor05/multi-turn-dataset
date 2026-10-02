@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+HEADER_FILE=""
+OUTPUT_FILE=""
+NUM_REQUESTS=0
+NUM_TOKENS=""
+TEMPERATURE=""
+MODEL=""
+INCLUDE_EXECUTION=0
+
+usage() {
+    echo "Usage: $0 -h <header_file> -o <output_file> [-n max_requests] [-t max_tokens] [-T temperature] [-m model] [-e] input1.jsonl [input2.jsonl ...]" >&2
+    exit 2
+}
+
+while getopts "h:o:n:t:T:m:e" opt; do
+    case $opt in
+        h) HEADER_FILE=$OPTARG ;;
+        o) OUTPUT_FILE=$OPTARG ;;
+        n) NUM_REQUESTS=$OPTARG ;;
+        t) NUM_TOKENS=$OPTARG ;;
+        T) TEMPERATURE=$OPTARG ;;
+        m) MODEL=$OPTARG ;;
+        e) INCLUDE_EXECUTION=1 ;;
+        *) usage ;;
+    esac
+done
+
+shift $((OPTIND - 1))
+INPUT_FILES=("$@")
+
+if [[ -z "$HEADER_FILE" || -z "$OUTPUT_FILE" || ${#INPUT_FILES[@]} -eq 0 ]]; then
+    echo "Error: header, output, and at least one input file are required." >&2
+    usage
+fi
+if [[ ! -f "$HEADER_FILE" ]]; then
+    echo "Error: header file not found: $HEADER_FILE" >&2
+    exit 1
+fi
+
+for f in "${INPUT_FILES[@]}"; do
+    if [[ ! -f "$f" ]]; then
+        echo "Error: input file not found: $f" >&2
+        exit 1
+    fi
+done
+
+EXTRA_ARGS=()
+[[ -n "$NUM_TOKENS" ]] && EXTRA_ARGS+=(--num_tokens "$NUM_TOKENS")
+[[ -n "$TEMPERATURE" ]] && EXTRA_ARGS+=(--temperature "$TEMPERATURE")
+[[ -n "$MODEL" ]] && EXTRA_ARGS+=(--model "$MODEL")
+(( INCLUDE_EXECUTION == 0 )) || EXTRA_ARGS+=(--include-execution)
+
+# Create output directory if needed
+OUTPUT_DIR="$(dirname "$OUTPUT_FILE")"
+mkdir -p "$OUTPUT_DIR"
+
+TEMP_DIR=$(mktemp -d)
+trap 'rm -rf "$TEMP_DIR"' EXIT
+
+TOTAL_LINES=0
+
+for INPUT_JSONL in "${INPUT_FILES[@]}"; do
+    echo "--- Processing file: $INPUT_JSONL ---"
+    LINE_NUM=0
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if (( NUM_REQUESTS > 0 && TOTAL_LINES >= NUM_REQUESTS )); then
+            echo "Reached the maximum number of requests ($NUM_REQUESTS). Stopping."
+            break 2  # break out of both loops
+        fi
+
+        [[ -z "$line" ]] && continue
+
+        LINE_NUM=$((LINE_NUM + 1))
+        TOTAL_LINES=$((TOTAL_LINES + 1))
+
+        TEMP_FILE="$TEMP_DIR/entry_${TOTAL_LINES}.json"
+        printf '%s\n' "$line" > "$TEMP_FILE"
+
+        echo "Processing entry $TOTAL_LINES (file: $INPUT_JSONL, line: $LINE_NUM)..."
+        python3 "$SCRIPT_DIR/prep_batch" "$HEADER_FILE" "$TEMP_FILE" \
+            --output "$OUTPUT_FILE" --num_requests 1 "${EXTRA_ARGS[@]}"
+    done < "$INPUT_JSONL"
+done
+
+echo "Done! Prepared $TOTAL_LINES request(s) in '$OUTPUT_FILE'."

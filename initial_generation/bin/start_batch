@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+
+import anthropic
+from anthropic.types.message_create_params import MessageCreateParamsNonStreaming
+from anthropic.types.messages.batch_create_params import Request
+import json
+import os
+import sys
+from pathlib import Path
+
+def make_requests(batch_file, seen):
+    requests = []
+    id_suffix = 0
+    with open(batch_file, "r") as f:
+        for line in f:
+            request_data = json.loads(line)
+            while request_data["custom_id"] in seen:
+                request_data["custom_id"] = request_data["custom_id"] + f'{id_suffix}'
+                id_suffix += 1
+            seen.append(request_data["custom_id"])
+            
+            requests.append(
+                Request(
+                    custom_id=request_data["custom_id"],
+                    params=MessageCreateParamsNonStreaming(**request_data["body"])
+                )
+            )
+    return requests
+
+if len(sys.argv) < 2:
+    print("Usage: start_batch <request-file.jsonl> [request-file2.jsonl ...]")
+    sys.exit(1)
+
+file_paths = sys.argv[1:]
+matching_files = [Path(file) for file in file_paths if file.endswith(".jsonl")]
+missing_files = [file for file in matching_files if not file.is_file()]
+if missing_files:
+    sys.exit("Request file not found: " + ", ".join(str(file) for file in missing_files))
+if not matching_files:
+    sys.exit("No JSONL request files provided.")
+
+requests = []
+seen_ids = []
+for file in matching_files:
+    requests.extend(make_requests(file, seen_ids))
+
+if not requests:
+    sys.exit("No valid requests found in the provided JSONL files.")
+
+client = anthropic.Anthropic()
+message_batch = client.messages.batches.create(
+    requests=requests
+)
+
+print(f"Batch job {message_batch.id} created successfully at time {message_batch.created_at}.")
+
+data_dir = Path(os.environ.get("DATA_DIR", Path(__file__).resolve().parent.parent / "data"))
+data_dir.mkdir(parents=True, exist_ok=True)
+with (data_dir / "batch_ids.txt").open("a", encoding="utf-8") as batch_file:
+    batch_file.write(f"{message_batch.id}\n")

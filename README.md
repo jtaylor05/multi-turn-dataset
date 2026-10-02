@@ -1,6 +1,6 @@
 # Multi-Turn Code Interaction Dataset
 
-This repository contains prompt templates and command-line tools for generating and evaluating multi-turn coding dialogues. Generation and evaluation can run directly with Python or in separate Docker images.
+This repository contains prompt templates and command-line tools for creating seed conversations, generating multi-turn coding dialogues, and evaluating them. The initial-generation and generation stages can run directly with Python or in separate Docker images.
 
 ## Requirements
 
@@ -57,6 +57,7 @@ Use `python /app/main.py --help` in either container for available options. If a
 ## Repository Map
 
 - [`generation/`](generation/README.md): batch generation and model API adapters.
+- [`initial_generation/`](initial_generation/README.md): first-pass conversational data generation from task prompts.
 - [`evaluation/`](evaluation/README.md): dialogue processing, code execution checks, and model-based scoring.
 - [`prompts/`](prompts/README.md): task instructions, format headers, and sample outputs.
 - [`bash/`](bash/README.md): container and analysis helper scripts.
