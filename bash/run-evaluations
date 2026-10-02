@@ -1,0 +1,29 @@
+#!/bin/bash
+set -euo pipefail
+
+if [ "$#" -eq 0 ]; then
+  echo "Usage: $0 <input.jsonl> [<input2.jsonl> ...]" >&2
+  echo "Example: $0 cps/model_a_eval.jsonl cps/model_b_eval.jsonl" >&2
+  exit 1
+fi
+
+base_dir="analysis_output"
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd -- "$script_dir/.." && pwd)"
+mkdir -p "$base_dir"
+
+for input_file in "$@"; do
+  if [ ! -f "$input_file" ]; then
+    echo "Input file not found: $input_file" >&2
+    continue
+  fi
+
+  stem="$(basename "$input_file")"
+  stem="${stem%.*}"
+  out_dir="$base_dir/$stem"
+  mkdir -p "$out_dir"
+
+  echo "Running analysis for $input_file -> $out_dir"
+  python3 "$repo_root/evaluation/src/analyze_scores.py" "$input_file" --output-dir "$out_dir"
+  echo
+done

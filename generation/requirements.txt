@@ -1,0 +1,9 @@
+pandas
+torch #==2.1.2 has an error when setting this version number
+transformers
+datasets
+scikit-learn
+openai
+google-genai 
+anthropic
+requests

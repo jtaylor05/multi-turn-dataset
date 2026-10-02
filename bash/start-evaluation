@@ -1,0 +1,24 @@
+#!/bin/bash
+set -euo pipefail
+
+if [[ $# -gt 1 ]]; then
+	echo "Usage: $0 [host-data-directory]" >&2
+	exit 2
+fi
+
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd -- "$script_dir/.." && pwd)"
+data_dir="${1:-$repo_root/data}"
+mkdir -p "$data_dir"
+data_dir="$(cd -- "$data_dir" && pwd)"
+image="multi-turn-evaluation:local"
+env_file="$repo_root/evaluation/.env"
+
+docker build -t "$image" "$repo_root/evaluation"
+
+docker_args=(run --rm -it --volume "$data_dir:/app/data")
+if [[ -f "$env_file" ]]; then
+	docker_args+=(--env-file "$env_file")
+fi
+
+exec docker "${docker_args[@]}" "$image"

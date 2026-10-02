@@ -1,0 +1,74 @@
+{
+  "dialogue_id": "a3f7c2e9b1d845fa",
+  "metadata": {
+    "tier": "Code State Awareness",
+    "primary_task": "CIM",
+    "downstream_application": "topic shift handling",
+    "language": "Python",
+    "complexity_score": 8,
+    "topics": ["Backend", "Data Processing"]
+  },
+  "turns": [
+    {
+      "turn_id": 1,
+      "messages": [
+        {
+          "role": "user",
+          "content": "I'm building a file ingestion pipeline in Python. Here's the setup I'm working with:\n\n- Constants: `MAX_FILE_SIZE_MB = 50`, `ALLOWED_EXTENSIONS = {'.csv', '.tsv', '.json'}`\n- A quarantine directory path: `QUARANTINE_DIR = '/data/quarantine'`\n- An existing validator function:\n\n```python\ndef validate_file(filepath):\n    import os\n    ext = os.path.splitext(filepath)[1].lower()\n    size_mb = os.path.getsize(filepath) / (1024 * 1024)\n    if ext not in ALLOWED_EXTENSIONS:\n        raise ValueError(f\"Unsupported extension: {ext}\")\n    if size_mb > MAX_FILE_SIZE_MB:\n        raise ValueError(f\"File exceeds size limit: {size_mb:.2f}MB\")\n    return True\n```\n\nI'm planning to wire this into a larger ingestion flow.",
+          "code_snippet": "MAX_FILE_SIZE_MB = 50\nALLOWED_EXTENSIONS = {'.csv', '.tsv', '.json'}\nQUARANTINE_DIR = '/data/quarantine'\n\ndef validate_file(filepath):\n    import os\n    ext = os.path.splitext(filepath)[1].lower()\n    size_mb = os.path.getsize(filepath) / (1024 * 1024)\n    if ext not in ALLOWED_EXTENSIONS:\n        raise ValueError(f\"Unsupported extension: {ext}\")\n    if size_mb > MAX_FILE_SIZE_MB:\n        raise ValueError(f\"File exceeds size limit: {size_mb:.2f}MB\")\n    return True",
+          "metadata": {"contains_code": true, "intent": "context_seeding"}
+        },
+        {
+          "role": "assistant",
+          "content": "Got it. You have a file ingestion pipeline with a 50MB size cap, a whitelist of three tabular/structured formats, a quarantine directory for problematic files, and a validator that enforces both constraints. I'll keep this setup in mind as you build out the rest of the pipeline.",
+          "code_snippet": "",
+          "reasoning_chain": "The user is seeding context about a file ingestion pipeline. I should acknowledge the constants, quarantine path, and validate_file function clearly so I demonstrate I've registered them, without indicating I'm specifically storing them for later.",
+          "ground_truth_valid": null
+        }
+      ]
+    },
+    {
+      "turn_id": 2,
+      "messages": [
+        {
+          "role": "user",
+          "content": "Quick unrelated thing — can you write me a Python function that flattens a nested dictionary into a single-level dict with dot-separated keys? For example, `{'a': {'b': {'c': 1}}}` should become `{'a.b.c': 1}`.",
+          "code_snippet": "",
+          "metadata": {"contains_code": false, "intent": "distractor_task"}
+        },
+        {
+          "role": "assistant",
+          "content": "Sure, here's a recursive approach:\n\n```python\ndef flatten_dict(d, parent_key='', sep='.'):\n    items = {}\n    for k, v in d.items():\n        new_key = f\"{parent_key}{sep}{k}\" if parent_key else k\n        if isinstance(v, dict):\n            items.update(flatten_dict(v, new_key, sep=sep))\n        else:\n            items[new_key] = v\n    return items\n```\n\nExample:\n```python\nnested = {'a': {'b': {'c': 1}}, 'x': {'y': 2}}\nprint(flatten_dict(nested))\n# {'a.b.c': 1, 'x.y': 2}\n```\n\nThe `sep` parameter lets you swap out the dot for another delimiter if needed.",
+          "code_snippet": "def flatten_dict(d, parent_key='', sep='.'):\n    items = {}\n    for k, v in d.items():\n        new_key = f\"{parent_key}{sep}{k}\" if parent_key else k\n        if isinstance(v, dict):\n            items.update(flatten_dict(v, new_key, sep=sep))\n        else:\n            items[new_key] = v\n    return items",
+          "reasoning_chain": "This is a distractor task entirely unrelated to the file ingestion pipeline. I should answer it cleanly without pulling in any of the prior file-pipeline context.",
+          "ground_truth_valid": null
+        }
+      ]
+    },
+    {
+      "turn_id": 3,
+      "messages": [
+        {
+          "role": "user",
+          "content": "Now write a function that ingests a list of file paths, moves any invalid ones to the quarantine folder, and returns two lists: one of successfully validated paths and one of quarantined paths.",
+          "code_snippet": "",
+          "metadata": {"contains_code": false, "intent": "recall_seeded_context"}
+        },
+        {
+          "role": "assistant",
+          "content": "Here's the ingestion function that ties into the existing pipeline setup:\n\n```python\nimport os\nimport shutil\n\ndef ingest_files(filepaths):\n    validated = []\n    quarantined = []\n\n    os.makedirs(QUARANTINE_DIR, exist_ok=True)\n\n    for filepath in filepaths:\n        try:\n            validate_file(filepath)\n            validated.append(filepath)\n        except ValueError:\n            filename = os.path.basename(filepath)\n            dest = os.path.join(QUARANTINE_DIR, filename)\n            shutil.move(filepath, dest)\n            quarantined.append(dest)\n\n    return validated, quarantined\n```\n\nThis uses `validate_file` to enforce the existing size and extension rules, and moves any file that fails validation into `QUARANTINE_DIR`. Successfully validated paths are returned as-is for downstream processing.",
+          "code_snippet": "import os\nimport shutil\n\ndef ingest_files(filepaths):\n    validated = []\n    quarantined = []\n\n    os.makedirs(QUARANTINE_DIR, exist_ok=True)\n\n    for filepath in filepaths:\n        try:\n            validate_file(filepath)\n            validated.append(filepath)\n        except ValueError:\n            filename = os.path.basename(filepath)\n            dest = os.path.join(QUARANTINE_DIR, filename)\n            shutil.move(filepath, dest)\n            quarantined.append(dest)\n\n    return validated, quarantined",
+          "reasoning_chain": "The user is now asking for a function that clearly requires the seeded context: validate_file, QUARANTINE_DIR, and implicitly MAX_FILE_SIZE_MB and ALLOWED_EXTENSIONS through validate_file. I should NOT use flatten_dict or anything from the distractor task. The function should call validate_file, catch ValueError, move failures to QUARANTINE_DIR using shutil.move, and return two lists.",
+          "ground_truth_valid": true
+        }
+      ]
+    }
+  ],
+  "final_ground_truth": {
+    "expected_output_code": "import os\nimport shutil\n\ndef ingest_files(filepaths):\n    validated = []\n    quarantined = []\n\n    os.makedirs(QUARANTINE_DIR, exist_ok=True)\n\n    for filepath in filepaths:\n        try:\n            validate_file(filepath)\n            validated.append(filepath)\n        except ValueError:\n            filename = os.path.basename(filepath)\n            dest = os.path.join(QUARANTINE_DIR, filename)\n            shutil.move(filepath, dest)\n            quarantined.append(dest)\n\n    return validated, quarantined",
+    "Expected_nl_output": "",
+    "Test_cases_to_pass": "# Setup: create temp files simulating valid and invalid inputs\n# Test 1: A valid .csv file under 50MB should appear in the validated list\n# Test 2: A .pdf file should be moved to QUARANTINE_DIR and appear in quarantined list\n# Test 3: A .csv file over 50MB should be moved to QUARANTINE_DIR\n# Test 4: An empty input list should return two empty lists\n\nimport os, tempfile, shutil, pytest\n\nMAX_FILE_SIZE_MB = 50\nALLOWED_EXTENSIONS = {'.csv', '.tsv', '.json'}\nQUARANTINE_DIR = tempfile.mkdtemp()\n\ndef test_valid_file():\n    with tempfile.NamedTemporaryFile(suffix='.csv', delete=False) as f:\n        f.write(b'a,b,c')\n        path = f.name\n    validated, quarantined = ingest_files([path])\n    assert path in validated\n    assert quarantined == []\n    os.unlink(path)\n\ndef test_invalid_extension():\n    with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as f:\n        f.write(b'data')\n        path = f.name\n    validated, quarantined = ingest_files([path])\n    assert validated == []\n    assert len(quarantined) == 1\n\ndef test_empty_input():\n    validated, quarantined = ingest_files([])\n    assert validated == [] and quarantined == []",
+    "reference_solution": "### Reference Solution ###\nThe correct implementation of `ingest_files` must:\n1. Iterate over each filepath in the input list.\n2. Call the previously established `validate_file` function on each path — NOT re-implement validation logic inline.\n3. On success, append the filepath to the `validated` list.\n4. On `ValueError`, move the file to `QUARANTINE_DIR` using `shutil.move` (or equivalent) and append the destination path to the `quarantined` list.\n5. Return the tuple `(validated, quarantined)`.\n\n### How to Judge ###\n- The response must NOT use `flatten_dict` or any artifact from the distractor turn.\n- The response MUST reference `validate_file` and `QUARANTINE_DIR` from the seeded context in turn 1.\n- Quarantined files should be physically moved (not copied or deleted) to `QUARANTINE_DIR`.\n- The function signature should accept a list of paths and return two lists.\n- Edge cases: empty input → two empty lists; mixed valid/invalid → correct split.",
+    "constraints_to_check": ["ingest_files"]
+  }
+}
